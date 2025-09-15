@@ -19,7 +19,8 @@ pico_sdk_init()
 add_executable(blink 
 	main.c
 	inputs.c
-	tcp.c	
+	tcp.c
+	tls.c	
 )
 
 target_include_directories(blink PRIVATE ${CMAKE_CURRENT_LIST_DIR})
@@ -31,6 +32,8 @@ target_link_libraries(blink
 	FreeRTOS-Kernel-Heap4
 
 	pico_cyw43_arch_lwip_threadsafe_background
+	pico_mbedtls
+  	pico_lwip_mbedtls
 )  
 
 # create map/bin/hex/uf2 file etc.

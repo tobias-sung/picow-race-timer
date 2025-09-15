@@ -3,3 +3,5 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+
+#define TLS_CLIENT 1

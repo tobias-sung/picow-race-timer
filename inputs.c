@@ -4,6 +4,7 @@
 #include "stdio.h"
 
 extern void tcp_send(char message[]);
+extern void tls_send(char message[]);
 
 TaskHandle_t uartHandle;
 TaskHandle_t buttonHandle;
@@ -66,8 +67,12 @@ void vUARTTask() {
             buffer[i] = output_char;
             i++;
         } else {
-            tcp_send(buffer);
-            
+            #if TLS_CLIENT
+                tls_send(buffer);
+            #else
+                tcp_send(buffer);
+            #endif           
+             
             printf("\n");
 
             if(!strcmp(buffer, "reset")){
