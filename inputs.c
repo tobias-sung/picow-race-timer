@@ -3,6 +3,8 @@
 #include "string.h"
 #include "stdio.h"
 
+extern void tcp_send(char message[]);
+
 TaskHandle_t uartHandle;
 TaskHandle_t buttonHandle;
 
@@ -37,7 +39,7 @@ void UART_setup(){
     irq_set_exclusive_handler(UART0_IRQ, vUARTCallback);
     irq_set_enabled(UART0_IRQ, true);
     uart_set_irqs_enabled(uart0, 1, 0); //This enables Interrupt outputs for uart0, specifically when RX FIFO contains datapic
-
+    
 }
 
 void GPIO_setup(){
@@ -64,6 +66,8 @@ void vUARTTask() {
             buffer[i] = output_char;
             i++;
         } else {
+            tcp_send(buffer);
+            
             printf("\n");
 
             if(!strcmp(buffer, "reset")){
