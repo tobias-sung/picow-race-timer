@@ -229,7 +229,7 @@ bool tls_start(const uint8_t *cert, size_t cert_len, char* server) {
     if (!tls_client_open(tls_client)) {
         return false;
     }
-    while(!tls_client->connected) {
+    while(!tls_client->connected && tls_client->pcb != NULL) {
         // the following #ifdef is only here so this same example can be used in multiple modes;
         // you do not need it in your code
 #if PICO_CYW43_ARCH_POLL
@@ -246,8 +246,9 @@ bool tls_start(const uint8_t *cert, size_t cert_len, char* server) {
         sleep_ms(1000);
 #endif
     }
-
-    tls_send("RESET_OK");
+    if (tls_client->connected){
+        tls_send("RESET_OK");
+    }
 
     int err = tls_client->error;
 

@@ -4,11 +4,14 @@
 #include "lwip/tcp.h"
 
 
-#define TEST_TCP_SERVER_IP "192.168.1.81"
-#define TCP_PORT 4242
+//#define TEST_TCP_SERVER_IP "192.168.1.81"
+//#define TCP_PORT 4242
 
 #define BUF_SIZE 2048
 #define POLL_TIME_S 5
+
+char* tcp_ip;
+int tcp_port;
 
 typedef struct TCP_CLIENT_T_ {
     struct tcp_pcb *tcp_pcb;
@@ -46,7 +49,7 @@ TCP_CLIENT_T* tcp_client_init(void) {
         printf("failed to allocate state\n");
         return NULL;
     }
-    ip4addr_aton(TEST_TCP_SERVER_IP, &state->remote_addr);
+    ip4addr_aton(tcp_ip, &state->remote_addr);
     return state;
 }
 
@@ -107,7 +110,7 @@ err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb) {
 bool tcp_client_open(void *arg) {
     
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
-    printf("Connecting to %s port %u\n", ip4addr_ntoa(&state->remote_addr), TCP_PORT);
+    printf("Connecting to %s port %u\n", ip4addr_ntoa(&state->remote_addr), tcp_port);
     state->tcp_pcb = tcp_new_ip_type(IP_GET_TYPE(&state->remote_addr));
     if (!state->tcp_pcb) {
         printf("failed to create pcb\n");
@@ -121,13 +124,15 @@ bool tcp_client_open(void *arg) {
     tcp_err(state->tcp_pcb, tcp_client_err);
 
     cyw43_arch_lwip_begin();
-    err_t err = tcp_connect(state->tcp_pcb, &state->remote_addr, TCP_PORT, tcp_client_connected);
+    err_t err = tcp_connect(state->tcp_pcb, &state->remote_addr, tcp_port, tcp_client_connected);
     cyw43_arch_lwip_end();
 
     return err == ERR_OK;
 }
 
-bool tcp_start(){
+bool tcp_start(char* server, int port){
+    tcp_ip = server;
+    tcp_port = port;
     tcp_client = tcp_client_init();
     if (!tcp_client){
         printf("TCP client failed to initialize. \n");
