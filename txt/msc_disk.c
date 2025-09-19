@@ -4,9 +4,6 @@
 
 #include "./wifi_setting.h"
 
-extern TaskHandle_t usbHandle;
-extern TaskHandle_t writeHandle;
-extern wifi_setting_t global_wifi;
 
 #if CFG_TUD_MSC
 
@@ -15,7 +12,7 @@ extern wifi_setting_t global_wifi;
 static bool ejected = false;
 
 #define SETTING_FILENAME "WIFI    TXT"
-#define DEFAULT_SETTING "ssid=SET_SSID\npassword=SET_PASSWORD\nhttp_server=SET_HTTP_SERVER\ntcp_ip=SET_TCP_IP\ntcp_port=SET_TCP_PORT\n"
+#define DEFAULT_SETTING "ssid=SET_SSID\npassword=SET_PASSWORD\nhttp_server=SET_HTTP_SERVER\ntcp_ip=SET_TCP_IP\ntcp_port=SET_TCP_PORT\nserver_type=tls\n"
 
 
 typedef struct {
@@ -188,17 +185,17 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
 
     // out of ramdisk
     if (lba >= DISK_BLOCK_NUM) {
-        printf("read10 out of ramdisk: lba=%u\n", lba);
+        debug_print("read10 out of ramdisk: lba=%u\r\n", lba);
         return -1;
     }
-    //printf("tud_msc_read10(%u, %u, %u, ...)\n", lun, lba, offset);
+    //debug_print("tud_msc_read10(%u, %u, %u, ...)\r\n", lun, lba, offset);
 
     uint16_t cid = root_dir_file_cluster_id(SETTING_FILENAME);
     if (lba == 2) {
         uint8_t *data = msc_disk[cid+1];
         fat_dir_entry_t *meta = (fat_dir_entry_t *)msc_disk[2];
         meta++;
-        printf("update dir entry '%s' size = %u\n",
+        debug_print("update dir entry '%s' size = %u\r\n",
                meta->DIR_Name, strlen(data));
 
         size_t s = strlen(data);
@@ -228,21 +225,21 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
 
     // out of ramdisk
     if (lba >= DISK_BLOCK_NUM) {
-        printf("write10 out of ramdisk: lba=%u\n", lba);
+        debug_print("write10 out of ramdisk: lba=%u\r\n", lba);
         return -1;
     }
 
     uint8_t* addr = msc_disk[lba] + offset;
     memcpy(addr, buffer, bufsize);
 
-    //printf("tud_msc_write10(lun=%u, lba=%u, offset=%u);\n", lun, lba, offset);
+    //debug_print("tud_msc_write10(lun=%u, lba=%u, offset=%u);\r\n", lun, lba, offset);
     if (lun == 0 && lba == 2) {
         // root directory entry
         fat_dir_entry_t *entry = (fat_dir_entry_t *)buffer;
         for (int i = 0; i < DISK_BLOCK_SIZE / sizeof(fat_dir_entry_t); i++) {
             fat_dir_entry_t *e = &entry[i];
             if (strncmp(SETTING_FILENAME, e->DIR_Name, strlen(SETTING_FILENAME)) == 0 && e->DIR_FileSize > 0) {
-                printf("update WIFI.TXT metadata, cluster=%u\n", e->DIR_FstClusLO + DISK_FAT_NUM);
+                debug_print("update WIFI.TXT metadata, cluster=%u\r\n", e->DIR_FstClusLO + DISK_FAT_NUM);
                 uint8_t *data = msc_disk[e->DIR_FstClusLO + DISK_FAT_NUM];
                 wifi_setting_t wifi_setting;
                 wifisetting_parse(&wifi_setting, data, e->DIR_FileSize);

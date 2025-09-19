@@ -1,11 +1,8 @@
-#include "picow-race-timer.h"
+#include "globals.h"
 
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 
-
-//#define TEST_TCP_SERVER_IP "192.168.1.81"
-//#define TCP_PORT 4242
 
 #define BUF_SIZE 2048
 #define POLL_TIME_S 5
@@ -32,11 +29,11 @@ err_t tcp_client_close(void *arg) {
         tcp_err(state->tcp_pcb, NULL);
         err = tcp_close(state->tcp_pcb);
         if (err != ERR_OK) {
-            printf("close failed %d, calling abort\n", err);
+            debug_print("close failed %d, calling abort\n", err);
             tcp_abort(state->tcp_pcb);
             err = ERR_ABRT;
         } else {
-            printf("TCP connection closed.");
+            debug_print("TCP connection closed.");
         }
         state->tcp_pcb = NULL;
     }
@@ -46,7 +43,7 @@ err_t tcp_client_close(void *arg) {
 TCP_CLIENT_T* tcp_client_init(void) {
     TCP_CLIENT_T *state = calloc(1, sizeof(TCP_CLIENT_T));
     if (!state) {
-        printf("failed to allocate state\n");
+        debug_print("failed to allocate state\n");
         return NULL;
     }
     ip4addr_aton(tcp_ip, &state->remote_addr);
@@ -57,10 +54,10 @@ TCP_CLIENT_T* tcp_client_init(void) {
 err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
     if (err != ERR_OK) {
-        printf("connect failed %d\n", err);
+        debug_print("connect failed %d\n", err);
         return tcp_client_close(arg);;
     }
-    printf("connected to ip:%s\n", ip4addr_ntoa(&state->remote_addr));
+    debug_print("connected to ip:%s\n", ip4addr_ntoa(&state->remote_addr));
     state->connected = true;
 
     return ERR_OK;
@@ -68,7 +65,7 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
 
 void tcp_client_err(void *arg, err_t err) {
     if (err != ERR_ABRT) {
-        printf("tcp_client_err %d\n", err);
+        debug_print("tcp_client_err %d\n", err);
         return tcp_client_close(arg);;
     }
 }
@@ -82,7 +79,7 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
     
     if (!p) {
-        printf("Response payload is empty.\n");
+        debug_print("Response payload is empty.\n");
         return tcp_client_close(arg);;
     }
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
@@ -91,10 +88,10 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     
     cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
-        //printf("recv %d err %d\n", p->tot_len, err);
+        //debug_print("recv %d err %d\n", p->tot_len, err);
         uint8_t *buf = p->payload;
         buf[p->tot_len]='\0';
-        //printf("received data:%s\n", buf);
+        //debug_print("received data:%s\n", buf);
         tcp_recved(tpcb, p->tot_len);
     }
 
@@ -110,10 +107,10 @@ err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb) {
 bool tcp_client_open(void *arg) {
     
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
-    printf("Connecting to %s port %u\n", ip4addr_ntoa(&state->remote_addr), tcp_port);
+    debug_print("Connecting to %s port %u\n", ip4addr_ntoa(&state->remote_addr), tcp_port);
     state->tcp_pcb = tcp_new_ip_type(IP_GET_TYPE(&state->remote_addr));
     if (!state->tcp_pcb) {
-        printf("failed to create pcb\n");
+        debug_print("failed to create pcb\n");
         return false;
     }
 
@@ -135,7 +132,7 @@ bool tcp_start(char* server, int port){
     tcp_port = port;
     tcp_client = tcp_client_init();
     if (!tcp_client){
-        printf("TCP client failed to initialize. \n");
+        debug_print("TCP client failed to initialize. \n");
         return -1;
     }
     if (!tcp_client_open(tcp_client)){
@@ -149,7 +146,7 @@ void tcp_send(char message[]){
 
     err_t err = tcp_write(tcp_client->tcp_pcb, message, strlen(message), TCP_WRITE_FLAG_COPY);
     if (err != ERR_OK) {
-        printf("Failed to write data %d\n", err);
+        debug_print("Failed to write data %d\n", err);
         return;
     }
     tcp_output(tcp_client->tcp_pcb);

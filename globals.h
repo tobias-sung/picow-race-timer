@@ -5,3 +5,7 @@
 #include "task.h"
 
 #define TLS_CLIENT 1
+
+extern bool is_tls;
+
+int debug_print(const char* fmt, ...);

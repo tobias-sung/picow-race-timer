@@ -21,6 +21,8 @@ add_executable(blink
 	inputs.c
 	tcp.c
 	tls.c
+	tracklist.c
+	globals.c
 	txt/msc_disk.c
 	txt/usb_descriptors.c 
 	txt/wifi_setting.c
@@ -47,6 +49,7 @@ target_link_libraries(blink
 	hardware_flash
 	hardware_sync
 )  
+
 
 # create map/bin/hex/uf2 file etc.
 pico_add_extra_outputs(blink)

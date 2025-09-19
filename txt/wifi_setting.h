@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../picow-race-timer.h"
+#include "../globals.h"
 
 #define WIFI_SETTING_MAGIC "WIFI"
 
@@ -19,7 +19,12 @@ typedef struct {
     uint8_t http_server[64];
     uint8_t tcp_ip[20];
     uint8_t tcp_port[6];
+    uint8_t server_type[5];
 } wifi_setting_t;
+
+extern TaskHandle_t usbHandle;
+extern TaskHandle_t writeHandle;
+extern wifi_setting_t global_wifi;
 
 /*
  * Read Wi-Fi configuration information from onboard flash memory.
@@ -45,5 +50,7 @@ void wifisetting_encode(uint8_t *buffer, wifi_setting_t *setting);
 void usb_init();
 void vUSBTask();
 void vWriteTask();
+
+wifi_setting_t connect_wifi();
 
 #endif

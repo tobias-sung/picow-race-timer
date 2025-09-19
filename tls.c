@@ -1,4 +1,4 @@
-#include "picow-race-timer.h"
+#include "globals.h"
 
 #include "lwip/pbuf.h"
 #include "lwip/altcp_tcp.h"
@@ -41,7 +41,7 @@ static err_t tls_client_close(void *arg) {
         altcp_err(state->pcb, NULL);
         err = altcp_close(state->pcb);
         if (err != ERR_OK) {
-            printf("close failed %d, calling abort\n", err);
+            debug_print("close failed %d, calling abort\n", err);
             altcp_abort(state->pcb);
             err = ERR_ABRT;
         }
@@ -53,11 +53,11 @@ static err_t tls_client_close(void *arg) {
 static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
     if (err != ERR_OK) {
-        printf("connect failed %d\n", err);
+        debug_print("connect failed %d\n", err);
         return tls_client_close(state);
     }
 
-    printf("connected to server\n");
+    debug_print("connected to server\n");
     state->connected = true;
 
     return ERR_OK;
@@ -69,7 +69,7 @@ static err_t tls_client_poll(void *arg, struct altcp_pcb *pcb) {
 
 static void tls_client_err(void *arg, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
-    printf("tls_client_err %d\n", err);
+    debug_print("tls_client_err %d\n", err);
     tls_client_close(state);
     state->error = PICO_ERROR_GENERIC;
 }
@@ -77,21 +77,24 @@ static void tls_client_err(void *arg, err_t err) {
 static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
     if (!p) {
-        printf("connection closed\n");
+        debug_print("connection closed\n");
         return tls_client_close(state);
     }
 
     if (p->tot_len > 0) {
-        /* For simplicity this examples creates a buffer on stack the size of the data pending here, 
-           and copies all the data to it in one go.
-           Do be aware that the amount of data can potentially be a bit large (TLS record size can be 16 KB),
-           so you may want to use a smaller fixed size buffer and copy the data to it using a loop, if memory is a concern */
-        char buf[p->tot_len + 1];
+        debug_print("New data received from server!\n");
 
-        pbuf_copy_partial(p, buf, p->tot_len, 0);
-        buf[p->tot_len] = 0;
+        char buf[256];
 
-        printf("***\nnew data received from server:\n***\n\n%s\n", buf);
+        for (int i = 0; i < ((p->tot_len/sizeof(buf)) + (p->tot_len % sizeof(buf) != 0)); i++){
+            if (p->tot_len % sizeof(buf) != 0 && i == p->tot_len/sizeof(buf)){
+                pbuf_copy_partial(p, buf, p->tot_len % sizeof(buf), sizeof(buf)*i);
+            } else {
+                pbuf_copy_partial(p, buf, sizeof(buf), sizeof(buf)*i);
+            }
+            debug_print(buf);
+            memset(buf, 0, sizeof(buf));
+        }
 
         altcp_recved(pcb, p->tot_len);
     }
@@ -105,7 +108,7 @@ static void tls_client_connect_to_server_ip(const ip_addr_t *ipaddr, TLS_CLIENT_
     err_t err;
     u16_t port = 443;
 
-    printf("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
+    debug_print("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
     err = altcp_connect(state->pcb, ipaddr, port, tls_client_connected);
     if (err != ERR_OK)
     {
@@ -118,12 +121,12 @@ static void tls_client_dns_found(const char* hostname, const ip_addr_t *ipaddr, 
 {
     if (ipaddr)
     {
-        printf("DNS resolving complete\n");
+        debug_print("DNS resolving complete\n");
         tls_client_connect_to_server_ip(ipaddr, (TLS_CLIENT_T *) arg);
     }
     else
     {
-        printf("error resolving hostname %s\n", hostname);
+        debug_print("error resolving hostname %s\n", hostname);
         tls_client_close(arg);
     }
 }
@@ -136,7 +139,7 @@ static bool tls_client_open(void *arg) {
 
     state->pcb = altcp_tls_new(tls_config, IPADDR_TYPE_ANY);
     if (!state->pcb) {
-        printf("failed to create pcb\n");
+        debug_print("failed to create pcb\n");
         return false;
     }
 
@@ -148,7 +151,7 @@ static bool tls_client_open(void *arg) {
     /* Set SNI */
     mbedtls_ssl_set_hostname(altcp_tls_context(state->pcb), state->http_server);
 
-    printf("resolving %s\n", state->http_server);
+    debug_print("resolving %s\n", state->http_server);
 
     // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
     // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
@@ -164,7 +167,7 @@ static bool tls_client_open(void *arg) {
     }
     else if (err != ERR_INPROGRESS)
     {
-        printf("error initiating DNS resolving, err=%d\n", err);
+        debug_print("error initiating DNS resolving, err=%d\n", err);
         tls_client_close(state->pcb);
     }
 
@@ -177,7 +180,7 @@ static bool tls_client_open(void *arg) {
 static TLS_CLIENT_T* tls_client_init(void) {
     TLS_CLIENT_T *state = calloc(1, sizeof(TLS_CLIENT_T));
     if (!state) {
-        printf("failed to allocate state\n");
+        debug_print("failed to allocate state\n");
         return NULL;
     }
 
@@ -202,7 +205,7 @@ bool tls_send(char message[]){
     int err = altcp_write(tls_client->pcb, (const char*)request_buffer, request_len, TCP_WRITE_FLAG_COPY);
     
     if (err != ERR_OK) {
-        printf("error writing data, err=%d", err);
+        debug_print("error writing data, err=%d", err);
         return tls_client_close(tls_client);
     }
 
